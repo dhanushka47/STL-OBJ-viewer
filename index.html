@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Viewer with Material Design</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #c8d6e5; /* Light color from your palette */
+            color: #001b48;
+            margin: 0;
+            padding: 20px;
+        }
+       
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        #canvas-holder {
+            width: 100%;
+            max-width: 450px;
+            height: 500px;
+            background-color: #e0f7fa; /* Light background color */
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 20px;
+        }
+        #stl-viewer {
+            display: block;
+            width: 80%;
+            height: 100%;
+        }
+        .options-panel {
+            background-color: #1a659e; /* Darker blue */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            width: 100%;
+            max-width: 450px;
+            color: #dde8f0;
+        }
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            display: inline-block;
+            cursor: pointer;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+        }
+        .apply-btn {
+            background-color: #018abd;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .color-selection {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        label, h5, .input-field {
+            color: #dde8f0;
+        }
+        select, input[type="file"] {
+            color: #001b48;
+        }
+        .range-field input[type=range] {
+            background-color: #57c7e3;
+            height: 12px; /* Increased thickness */
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            #canvas-holder {
+                max-width: 100%;
+                height: 400px;
+            }
+            .options-panel {
+                max-width: 100%;
+            }
+        }
+        /* Style for the login button to match Material Design */
+        .btn-login {
+            background-color: #4caf50; /* Material Design green */
+            margin-right: 20px;
+            padding: 0 20px;
+        }
+    </style>
+</head>
+<body>
+
+   
+
+    <!-- Main Content -->
+    <div class="container">
+        <div id="canvas-holder">
+            <canvas id="stl-viewer"></canvas>
+        </div>
+
+        <div class="options-panel">
+
+            <h5>Upload 3D Model</h5>
+
+            <div class="input-field">
+                <input type="file" id="file-input" accept=".stl,.obj" class="btn">
+            </div>
+
+            <h5>Select Color</h5>
+            <div class="color-selection">
+                <div class="color-btn" id="red-btn" style="background-color: red;"></div>
+                <div class="color-btn" id="green-btn" style="background-color: green;"></div>
+                <div class="color-btn" id="blue-btn" style="background-color: blue;"></div>
+                <div class="color-btn" id="black-btn" style="background-color: black;"></div>
+            </div>
+
+            <h5>Select Material</h5>
+            <div class="input-field">
+                <select id="material-select">
+                    <option value="PLA" selected>PLA</option>
+                    <option value="ABS">ABS</option>
+                </select>
+                <label for="material-select">Material Type</label>
+            </div>
+
+            <h5>Infill</h5>
+            <p class="range-field">
+                <input type="range" id="infill-slider" min="0" max="100" value="20" />
+                <label for="infill-slider">Infill Percentage: <span id="infill-percentage">20%</span></label>
+            </p>
+
+            <button class="btn waves-effect waves-light apply-btn" id="apply-btn">Apply</button>
+        </div>
+    </div>
+
+    <!-- JavaScript for the 3D Viewer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r110/three.min.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/r110/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/r110/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/r110/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let selectedColor = 0x888888; // Default model color
+        let selectedMaterial = 'PLA'; // Default material
+        let selectedInfill = 60; // Default infill percentage
+        let modelMesh = null; // To store the model for later manipulation
+
+        // Initialize Materialize components
+        document.addEventListener('DOMContentLoaded', function() {
+            var elems = document.querySelectorAll('select');
+            M.FormSelect.init(elems);
+        });
+
+        // Handle color button clicks and immediately apply the color
+        document.getElementById('red-btn').addEventListener('click', () => {
+            selectedColor = 0xff0000;
+            changeModelColor(selectedColor); // Apply color immediately
+        });
+        document.getElementById('green-btn').addEventListener('click', () => {
+            selectedColor = 0x00ff00;
+            changeModelColor(selectedColor); // Apply color immediately
+        });
+        document.getElementById('blue-btn').addEventListener('click', () => {
+            selectedColor = 0x0000ff;
+            changeModelColor(selectedColor); // Apply color immediately
+        });
+        document.getElementById('black-btn').addEventListener('click', () => {
+            selectedColor = 0x000000;
+            changeModelColor(selectedColor); // Apply color immediately
+        });
+
+        // Handle material selection
+        document.getElementById('material-select').addEventListener('change', function() {
+            selectedMaterial = this.value;
+        });
+
+        // Handle infill slider changes
+        document.getElementById('infill-slider').addEventListener('input', function() {
+            selectedInfill = this.value;
+            document.getElementById('infill-percentage').textContent = `${this.value}%`;
+        });
+
+        // Apply button event to log material and infill values
+        document.getElementById('apply-btn').addEventListener('click', () => {
+            console.log(`Material: ${selectedMaterial}, Infill: ${selectedInfill}%`);
+        });
+
+        function changeModelColor(color) {
+            if (modelMesh) {
+                modelMesh.traverse(function(child) {
+                    if (child instanceof THREE.Mesh) {
+                        child.material.color.setHex(color);
+                    }
+                });
+            }
+        }
+
+        // File input handling and 3D model rendering
+        document.getElementById('file-input').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const fileName = file.name.toLowerCase();
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const data = e.target.result;
+
+                    // Set up the scene, camera, and renderer
+                    const scene = new THREE.Scene();
+                    const camera = new THREE.PerspectiveCamera(75, 450 / 500, 0.1, 1000);
+                    const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: document.getElementById('stl-viewer') });
+                    renderer.setSize(450, 500);
+                    renderer.setClearColor(0x57c7e3); // Viewer background (lighter blue)
+
+                    // Add lights
+                    const ambientLight = new THREE.AmbientLight(0x404040);
+                    scene.add(ambientLight);
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                    directionalLight.position.set(1, 1, 1).normalize();
+                    scene.add(directionalLight);
+
+                    let mesh;
+
+                    // Load STL or OBJ based on the file extension
+                    if (fileName.endsWith('.stl')) {
+                        const loader = new THREE.STLLoader();
+                        const geometry = loader.parse(data);
+                        const material = new THREE.MeshPhongMaterial({ color: selectedColor });
+                        mesh = new THREE.Mesh(geometry, material);
+                        mesh.rotation.x = -Math.PI / 2;
+                    } else if (fileName.endsWith('.obj')) {
+                        const loader = new THREE.OBJLoader();
+                        const obj = loader.parse(data);
+                        mesh = obj;
+                        mesh.traverse(function(child) {
+                            if (child instanceof THREE.Mesh) {
+                                child.material = new THREE.MeshPhongMaterial({ color: selectedColor });
+                            }
+                        });
+                    }
+
+                    if (mesh) {
+                        scene.add(mesh);
+                        modelMesh = mesh;
+
+                        // Center the model using bounding box
+                        const box = new THREE.Box3().setFromObject(mesh);
+                        const center = box.getCenter(new THREE.Vector3());
+                        const size = box.getSize(new THREE.Vector3());
+
+                        mesh.position.sub(center); // Center the model at the origin
+                        camera.position.z = size.length() * 1.5; // Adjust camera distance based on model size
+
+                        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+                        const animate = function() {
+                            requestAnimationFrame(animate);
+                            controls.update();
+                            renderer.render(scene, camera);
+                        };
+                        animate();
+                    }
+                };
+
+                if (fileName.endsWith('.stl')) {
+                    reader.readAsArrayBuffer(file);
+                } else if (fileName.endsWith('.obj')) {
+                    reader.readAsText(file);
+                } else {
+                    alert('Please upload a valid STL or OBJ file');
+                }
+            } else {
+                alert('No file selected');
+            }
+        });
+    </script>
+</body>
+</html>
