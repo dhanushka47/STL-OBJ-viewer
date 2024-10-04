@@ -5,4 +5,5 @@ STL / OBJ files view on web page
 
 final output
 
-![Uploading 2024-10-03 22_56_08-Greenshot.png…]()
+
+![2024-10-03 22_56_08-Greenshot](https://github.com/user-attachments/assets/52a3e585-a5c2-4780-88bf-b3d8c9d141a3)
